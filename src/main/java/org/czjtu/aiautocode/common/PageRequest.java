@@ -2,8 +2,9 @@ package org.czjtu.aiautocode.common;
 
 import lombok.Data;
 
+
 @Data
-public class PageRequest {
+public class PageRequest{
 
     /**
      * 当前页号
