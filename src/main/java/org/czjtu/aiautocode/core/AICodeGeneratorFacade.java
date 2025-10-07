@@ -5,6 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.czjtu.aiautocode.ai.AICodeGeneratorService;
 import org.czjtu.aiautocode.ai.model.HtmlCodeResult;
 import org.czjtu.aiautocode.ai.model.MultiFileCodeResult;
+import org.czjtu.aiautocode.core.parser.CodeParserExecutor;
+import org.czjtu.aiautocode.core.saver.CodeFileSaverExecutor;
 import org.czjtu.aiautocode.exception.BusinessException;
 import org.czjtu.aiautocode.exception.ErrorCode;
 import org.czjtu.aiautocode.model.enums.CodeGenTypeEnum;
@@ -33,8 +35,14 @@ public class AICodeGeneratorFacade {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
         }
         return switch (codeGenTypeEnum){
-            case HTML-> generateAndSaveHtmlCode(userMessage);
-            case MULTI_FILE-> generateAndSaveMultiFileCode(userMessage);
+            case HTML-> {
+                HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
+                yield  CodeFileSaverExecutor.executeSaver(htmlCodeResult,CodeGenTypeEnum.HTML);
+            }
+            case MULTI_FILE-> {
+                MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorService.generateMultiFileCode(userMessage);
+                yield  CodeFileSaverExecutor.executeSaver(multiFileCodeResult,CodeGenTypeEnum.MULTI_FILE);
+            }
             default->{
                 String errorMessage = "不支持的代码生成模式"+codeGenTypeEnum.getValue();
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);
@@ -53,8 +61,14 @@ public class AICodeGeneratorFacade {
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
         }
         return switch (codeGenTypeEnum){
-            case HTML-> generateAndSaveHtmlCodeStream(userMessage);
-            case MULTI_FILE-> generateAndSaveMultiFileCodeStream(userMessage);
+            case HTML->{
+                Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
+                yield  ProcessCodeStream(result,CodeGenTypeEnum.HTML);
+            }
+            case MULTI_FILE-> {
+                Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
+                yield  ProcessCodeStream(result,CodeGenTypeEnum.MULTI_FILE);
+            }
             default->{
                 String errorMessage = "不支持的代码生成模式"+codeGenTypeEnum.getValue();
                 throw new BusinessException(ErrorCode.SYSTEM_ERROR, errorMessage);
@@ -63,70 +77,31 @@ public class AICodeGeneratorFacade {
     }
 
     /**
-     * 生成原生HTML代码(流式)
-     * @param userMessage
-     * @return
-     */
-    private Flux<String> generateAndSaveHtmlCodeStream(String userMessage) {
-        Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
-        //定义一个字符串拼接器
-        StringBuilder codeBuilder=new StringBuilder();
-        return result.doOnNext(chunk -> {
-            //实时拼接字符串
-            codeBuilder.append(chunk);
-        }).doOnComplete(() -> {
-            try {
-                //流式返回后，保存代码
-                String completeHtmlCode = codeBuilder.toString();
-                //调用文件解析器解析代码为对象
-                HtmlCodeResult htmlCodeResult = CodeParser.parseHtmlCode(completeHtmlCode);
-                //保存代码
-                File saveDir = CodeFileSaver.saveHtmlCode(htmlCodeResult);
-                log.info("保存的代码文件路径：{}", saveDir.getAbsolutePath());
-            }catch (Exception e){
-                log.error("代码保存失败：{}",e.getMessage());
-            }
-        });
-    }
-
-    /**
      * 生成多文件代码(流式)
-     * @param userMessage
-     * @return
+     *
+     * @param codeStream 代码流
+     * @param codeGenType 代码生成模式
+     * @return 流式响应
      */
-    private Flux<String> generateAndSaveMultiFileCodeStream(String userMessage) {
-        Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
+    private Flux<String> ProcessCodeStream(Flux<String> codeStream,CodeGenTypeEnum codeGenType) {
         //定义一个字符串拼接器
         StringBuilder codeBuilder=new StringBuilder();
-        return result.doOnNext(chunk -> {
+        return codeStream.doOnNext(chunk -> {
             //实时拼接字符串
             codeBuilder.append(chunk);
         }).doOnComplete(() -> {
             try {
                 //流式返回后，保存代码
-                String completeMultiFileCode = codeBuilder.toString();
-                //调用文件解析器解析代码为对象
-                MultiFileCodeResult multiFileCodeResult = CodeParser.parseMultiFileCode(completeMultiFileCode);
-                //保存代码
-                File saveDir = CodeFileSaver.saveMultiFileCode(multiFileCodeResult);
+                String completeCode = codeBuilder.toString();
+                //调用执行器解析代码为对象
+                Object parseResult = CodeParserExecutor.executeParser(completeCode, codeGenType);
+                //使用执行器保存代码
+                File saveDir = CodeFileSaverExecutor.executeSaver(parseResult, codeGenType);
                 log.info("保存的代码文件路径：{}", saveDir.getAbsolutePath());
-
             }catch (Exception e){
                 log.error("代码保存失败：{}",e.getMessage());
             }
         });
-    }
-
-
-
-    private File generateAndSaveMultiFileCode(String userMessage) {
-        MultiFileCodeResult multiFileCodeResult = aiCodeGeneratorService.generateMultiFileCode(userMessage);
-        return CodeFileSaver.saveMultiFileCode(multiFileCodeResult);
-    }
-
-    private File generateAndSaveHtmlCode(String userMessage) {
-        HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
-        return CodeFileSaver.saveHtmlCode(htmlCodeResult);
     }
 
 
