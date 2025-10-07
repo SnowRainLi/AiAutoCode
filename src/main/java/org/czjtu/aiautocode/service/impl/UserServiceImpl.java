@@ -9,7 +9,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import org.czjtu.aiautocode.exception.BusinessException;
 import org.czjtu.aiautocode.exception.ErrorCode;
 import org.czjtu.aiautocode.mapper.UserMapper;
-import org.czjtu.aiautocode.model.dto.UserQueryRequest;
+import org.czjtu.aiautocode.model.dto.user.UserQueryRequest;
 import org.czjtu.aiautocode.model.entity.User;
 import org.czjtu.aiautocode.model.enums.UserRoleEnum;
 import org.czjtu.aiautocode.model.vo.LoginUserVO;

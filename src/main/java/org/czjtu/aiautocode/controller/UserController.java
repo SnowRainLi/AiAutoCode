@@ -12,7 +12,7 @@ import org.czjtu.aiautocode.constant.UserConstant;
 import org.czjtu.aiautocode.exception.BusinessException;
 import org.czjtu.aiautocode.exception.ErrorCode;
 import org.czjtu.aiautocode.exception.ThrowUtils;
-import org.czjtu.aiautocode.model.dto.*;
+import org.czjtu.aiautocode.model.dto.user.*;
 import org.czjtu.aiautocode.model.entity.User;
 import org.czjtu.aiautocode.model.vo.LoginUserVO;
 import org.czjtu.aiautocode.model.vo.UserVO;
@@ -57,7 +57,7 @@ public class UserController {
      * @return 脱敏后的用户信息
      */
     @PostMapping("/login")
-    public BaseResponse<LoginUserVO> login(@RequestBody UserLoginRequest userLoginRequest,HttpServletRequest request) {
+    public BaseResponse<LoginUserVO> login(@RequestBody UserLoginRequest userLoginRequest, HttpServletRequest request) {
         ThrowUtils.throwIf(userLoginRequest == null, ErrorCode.PARAMS_ERROR);
         String userAccount = userLoginRequest.getUserAccount();
         String userPassword = userLoginRequest.getUserPassword();

@@ -1,4 +1,4 @@
-package org.czjtu.aiautocode.model.dto;
+package org.czjtu.aiautocode.model.dto.user;
 
 import lombok.Data;
 import lombok.EqualsAndHashCode;

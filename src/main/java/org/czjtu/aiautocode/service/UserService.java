@@ -3,7 +3,7 @@ package org.czjtu.aiautocode.service;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
 import jakarta.servlet.http.HttpServletRequest;
-import org.czjtu.aiautocode.model.dto.UserQueryRequest;
+import org.czjtu.aiautocode.model.dto.user.UserQueryRequest;
 import org.czjtu.aiautocode.model.entity.User;
 import org.czjtu.aiautocode.model.vo.LoginUserVO;
 import org.czjtu.aiautocode.model.vo.UserVO;

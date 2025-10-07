@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDateTime;
 import java.util.Date;
 
 /**
@@ -71,7 +72,7 @@ public class App implements Serializable {
      * 编辑时间
      */
     @TableField(value = "editTime")
-    private Date editTime;
+    private LocalDateTime editTime;
 
     /**
      * 创建时间
