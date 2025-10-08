@@ -2,6 +2,7 @@ package org.czjtu.aiautocode.controller;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
+import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import jakarta.annotation.Resource;
@@ -15,20 +16,22 @@ import org.czjtu.aiautocode.constant.UserConstant;
 import org.czjtu.aiautocode.exception.BusinessException;
 import org.czjtu.aiautocode.exception.ErrorCode;
 import org.czjtu.aiautocode.exception.ThrowUtils;
-import org.czjtu.aiautocode.model.dto.app.AppAddRequest;
-import org.czjtu.aiautocode.model.dto.app.AppAdminUpdateRequest;
-import org.czjtu.aiautocode.model.dto.app.AppQueryRequest;
-import org.czjtu.aiautocode.model.dto.app.AppUpdateRequest;
+import org.czjtu.aiautocode.model.dto.app.*;
 import org.czjtu.aiautocode.model.entity.App;
 import org.czjtu.aiautocode.model.entity.User;
 import org.czjtu.aiautocode.model.enums.CodeGenTypeEnum;
 import org.czjtu.aiautocode.model.vo.AppVO;
 import org.czjtu.aiautocode.service.AppService;
 import org.czjtu.aiautocode.service.UserService;
+import org.springframework.http.MediaType;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/app")
@@ -272,6 +275,51 @@ public class AppController {
         return ResultUtils.success(appService.getAppVO(app));
     }
 
+
+    @GetMapping(value = "/chat/gen/coode",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam("appId") Long appId,
+                                      @RequestParam("prompt") String message,
+                                      HttpServletRequest  request) {
+        ThrowUtils.throwIf(appId==null||appId<=0, ErrorCode.PARAMS_ERROR, "应用参数错误");
+        ThrowUtils.throwIf(message==null||message.length()<=0, ErrorCode.PARAMS_ERROR, "提示词不能为空");
+        // 获取登录用户
+        User longinUser = userService.getLoginUser(request);
+        //调用服务sse流式返回
+        Flux<String> contentFlux = appService.chatToGenCode(appId, message, longinUser);
+        return contentFlux
+                .map(chunk->{
+                    Map<String, String> wapper = Map.of("d", chunk);
+                    String jsonData = JSONUtil.toJsonStr(wapper);
+                    return ServerSentEvent.<String>builder()
+                            .data(jsonData)
+                            .build();
+                })
+                .concatWith(Mono.just(
+                        ServerSentEvent.<String>builder()
+                                .event("done")
+                                .data("")
+                                .build()
+                ));
+    }
+
+    /**
+     * 应用部署
+     *
+     * @param appDeployRequest 部署请求
+     * @param request          请求
+     * @return 部署 URL
+     */
+    @PostMapping("/deploy")
+    public BaseResponse<String> deployApp(@RequestBody AppDeployRequest appDeployRequest, HttpServletRequest request) {
+        ThrowUtils.throwIf(appDeployRequest == null, ErrorCode.PARAMS_ERROR);
+        Long appId = appDeployRequest.getAppId();
+        ThrowUtils.throwIf(appId == null || appId <= 0, ErrorCode.PARAMS_ERROR, "应用 ID 不能为空");
+        // 获取当前登录用户
+        User loginUser = userService.getLoginUser(request);
+        // 调用服务部署应用
+        String deployUrl = appService.deployApp(appId, loginUser);
+        return ResultUtils.success(deployUrl);
+    }
 
 
 }
