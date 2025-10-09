@@ -9,6 +9,7 @@ import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.czjtu.aiautocode.constant.AppConstant;
 import org.czjtu.aiautocode.core.AICodeGeneratorFacade;
 import org.czjtu.aiautocode.exception.BusinessException;
@@ -18,15 +19,18 @@ import org.czjtu.aiautocode.mapper.AppMapper;
 import org.czjtu.aiautocode.model.dto.app.AppQueryRequest;
 import org.czjtu.aiautocode.model.entity.App;
 import org.czjtu.aiautocode.model.entity.User;
+import org.czjtu.aiautocode.model.enums.ChatHistoryMessageTypeEnum;
 import org.czjtu.aiautocode.model.enums.CodeGenTypeEnum;
 import org.czjtu.aiautocode.model.vo.AppVO;
 import org.czjtu.aiautocode.model.vo.UserVO;
 import org.czjtu.aiautocode.service.AppService;
+import org.czjtu.aiautocode.service.ChatHistoryService;
 import org.czjtu.aiautocode.service.UserService;
 import org.springframework.stereotype.Service;
 import reactor.core.publisher.Flux;
 
 import java.io.File;
+import java.io.Serializable;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -36,6 +40,7 @@ import java.util.stream.Collectors;
 * @createDate 2025-10-07 16:52:13
 */
 @Service
+@Slf4j
 public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppService{
     @Resource
     private UserService userService;
@@ -43,6 +48,8 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
     @Resource
     private AICodeGeneratorFacade aiCodeGeneratorFacade;
 
+    @Resource
+    private ChatHistoryService chatHistoryService;
     @Override
     public AppVO getAppVO(App app) {
         if (app == null) {
@@ -125,8 +132,24 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         String codeGenType = app.getCodeGenType();
         CodeGenTypeEnum codeGenTypeEnum = CodeGenTypeEnum.getEnumByValue(codeGenType);
         ThrowUtils.throwIf(codeGenTypeEnum==null, ErrorCode.PARAMS_ERROR, "代码生成模式错误");
-        //5.调用ai 生成代码
-        return aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        //调用ai前先保存用户消息
+        chatHistoryService.addChatMessage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), longinUser.getId());
+        //5.调用ai 生成代码(流式)
+        Flux<String> contentFlux = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
+        //收集ai响应内容，并在响应完成后保存到对话历史
+        StringBuilder aiResponseBuilder = new StringBuilder();
+        return contentFlux.map(chunk -> {
+            //实时收集响应内容
+            aiResponseBuilder.append(chunk);
+            return chunk;
+        }).doOnComplete(()->{
+            String aiResponse = aiResponseBuilder.toString();
+            chatHistoryService.addChatMessage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), longinUser.getId());
+        }).doOnError(error->{
+            //若ai回复失败，则保存失败信息
+            String errorMessage = "AI 回复失败："+error.getMessage();
+            chatHistoryService.addChatMessage(appId, errorMessage, ChatHistoryMessageTypeEnum.AI.getValue(), longinUser.getId());
+        });
     }
 
     @Override
@@ -172,7 +195,29 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App> implements AppSe
         return String.format("%s/%s",AppConstant.CODE_DEPLOY_HOST, deployKey);
     }
 
-
+    /**
+     * 删除应用，删除应用时删除对话历史
+     * @param id
+     * @return
+     */
+    @Override
+    public boolean removeById(Serializable  id){
+        if (id == null){
+            return false;
+        }
+        long appId = Long.parseLong(id.toString());
+        if (appId <= 0){
+            return false;
+        }
+        //删除对话历史
+        try {
+            chatHistoryService.deleteByAppId(appId);
+        } catch (Exception e) {
+            log.error("删除应用时删除对话历史失败：{}",e.getMessage());
+        }
+        //删除应用
+        return  super.removeById(id);
+    }
 }
 
 

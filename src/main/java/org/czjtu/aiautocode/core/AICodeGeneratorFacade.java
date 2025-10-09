@@ -3,6 +3,7 @@ package org.czjtu.aiautocode.core;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.czjtu.aiautocode.ai.AICodeGeneratorService;
+import org.czjtu.aiautocode.ai.AICodeGeneratorServiceFactory;
 import org.czjtu.aiautocode.ai.model.HtmlCodeResult;
 import org.czjtu.aiautocode.ai.model.MultiFileCodeResult;
 import org.czjtu.aiautocode.core.parser.CodeParserExecutor;
@@ -22,7 +23,7 @@ import java.io.File;
 @Slf4j
 public class AICodeGeneratorFacade {
     @Resource
-    private AICodeGeneratorService aiCodeGeneratorService;
+    private AICodeGeneratorServiceFactory aiCodeGeneratorServiceFactory;
 
     /**
      * 统一入口方法，根据传入的代码生成模式，调用对应的代码生成方法
@@ -34,6 +35,8 @@ public class AICodeGeneratorFacade {
         if (codeGenTypeEnum==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
         }
+        //根据应用id获取AI服务
+        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId,codeGenTypeEnum);
         return switch (codeGenTypeEnum){
             case HTML-> {
                 HtmlCodeResult htmlCodeResult = aiCodeGeneratorService.generateHtmlCode(userMessage);
@@ -60,6 +63,8 @@ public class AICodeGeneratorFacade {
         if (codeGenTypeEnum==null){
             throw new BusinessException(ErrorCode.PARAMS_ERROR, "请选择代码生成模式");
         }
+        //根据应用id获取AI服务
+        AICodeGeneratorService aiCodeGeneratorService = aiCodeGeneratorServiceFactory.getAiCodeGeneratorService(appId,codeGenTypeEnum);
         return switch (codeGenTypeEnum){
             case HTML->{
                 Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
@@ -67,6 +72,10 @@ public class AICodeGeneratorFacade {
             }
             case MULTI_FILE-> {
                 Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
+                yield  ProcessCodeStream(result,CodeGenTypeEnum.MULTI_FILE,appId);
+            }
+            case VUE_PROJECT->{
+                Flux<String> result = aiCodeGeneratorService.generateVueCodeStream(appId,userMessage);
                 yield  ProcessCodeStream(result,CodeGenTypeEnum.MULTI_FILE,appId);
             }
             default->{

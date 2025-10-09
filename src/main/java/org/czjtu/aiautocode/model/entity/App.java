@@ -93,5 +93,6 @@ public class App implements Serializable {
     @TableLogic
     private Integer isDelete;
 
+    @TableField(exist = false)
     private static final long serialVersionUID = 1895836130820534673L;
 }

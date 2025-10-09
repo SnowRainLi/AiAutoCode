@@ -1,6 +1,7 @@
 package org.czjtu.aiautocode.model.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
+import lombok.Builder;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -11,6 +12,7 @@ import java.util.Date;
  * @TableName chat_history
  */
 @TableName(value ="chat_history")
+@Builder
 @Data
 public class ChatHistory implements Serializable {
     /**
