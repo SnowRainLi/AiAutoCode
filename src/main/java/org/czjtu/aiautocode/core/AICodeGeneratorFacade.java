@@ -99,8 +99,6 @@ public class AICodeGeneratorFacade {
      * @return Flux<String> 流式响应
      */
 
-    //todo 思考用官方提供的工具去获取工具调用信息
-
     private Flux<String> processTokenStream(TokenStream tokenStream) {
         return Flux.create(sink -> {
             tokenStream.onPartialResponse((String partialResponse) -> {
