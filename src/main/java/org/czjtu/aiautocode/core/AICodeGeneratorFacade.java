@@ -1,11 +1,18 @@
 package org.czjtu.aiautocode.core;
 
+import cn.hutool.json.JSONUtil;
+import dev.langchain4j.model.chat.response.ChatResponse;
+import dev.langchain4j.service.TokenStream;
+import dev.langchain4j.service.tool.ToolExecution;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.czjtu.aiautocode.ai.AICodeGeneratorService;
 import org.czjtu.aiautocode.ai.AICodeGeneratorServiceFactory;
 import org.czjtu.aiautocode.ai.model.HtmlCodeResult;
 import org.czjtu.aiautocode.ai.model.MultiFileCodeResult;
+import org.czjtu.aiautocode.ai.model.message.AiResponseMessage;
+import org.czjtu.aiautocode.ai.model.message.ToolExecutedMessage;
+import org.czjtu.aiautocode.ai.model.message.ToolRequestMessage;
 import org.czjtu.aiautocode.core.parser.CodeParserExecutor;
 import org.czjtu.aiautocode.core.saver.CodeFileSaverExecutor;
 import org.czjtu.aiautocode.exception.BusinessException;
@@ -68,15 +75,15 @@ public class AICodeGeneratorFacade {
         return switch (codeGenTypeEnum){
             case HTML->{
                 Flux<String> result = aiCodeGeneratorService.generateHtmlCodeStream(userMessage);
-                yield  ProcessCodeStream(result,CodeGenTypeEnum.HTML,appId);
+                yield  processCodeStream(result,CodeGenTypeEnum.HTML,appId);
             }
             case MULTI_FILE-> {
                 Flux<String> result = aiCodeGeneratorService.generateMultiFileCodeStream(userMessage);
-                yield  ProcessCodeStream(result,CodeGenTypeEnum.MULTI_FILE,appId);
+                yield  processCodeStream(result,CodeGenTypeEnum.MULTI_FILE,appId);
             }
             case VUE_PROJECT->{
-                Flux<String> result = aiCodeGeneratorService.generateVueCodeStream(appId,userMessage);
-                yield  ProcessCodeStream(result,CodeGenTypeEnum.MULTI_FILE,appId);
+                TokenStream tokenStream = aiCodeGeneratorService.generateVueCodeStream(appId,userMessage);
+                yield  processTokenStream(tokenStream);
             }
             default->{
                 String errorMessage = "不支持的代码生成模式"+codeGenTypeEnum.getValue();
@@ -86,13 +93,48 @@ public class AICodeGeneratorFacade {
     }
 
     /**
+     * 将 TokenStream 转换为 Flux<String>，并传递工具调用信息
+     *
+     * @param tokenStream TokenStream 对象
+     * @return Flux<String> 流式响应
+     */
+
+    //todo 思考用官方提供的工具去获取工具调用信息
+
+    private Flux<String> processTokenStream(TokenStream tokenStream) {
+        return Flux.create(sink -> {
+            tokenStream.onPartialResponse((String partialResponse) -> {
+                        AiResponseMessage aiResponseMessage = new AiResponseMessage(partialResponse);
+                        sink.next(JSONUtil.toJsonStr(aiResponseMessage));
+                    })
+                    .onPartialToolExecutionRequest((index, toolExecutionRequest) -> {
+                        ToolRequestMessage toolRequestMessage = new ToolRequestMessage(toolExecutionRequest);
+                        sink.next(JSONUtil.toJsonStr(toolRequestMessage));
+                    })
+                    .onToolExecuted((ToolExecution toolExecution) -> {
+                        ToolExecutedMessage toolExecutedMessage = new ToolExecutedMessage(toolExecution);
+                        sink.next(JSONUtil.toJsonStr(toolExecutedMessage));
+                    })
+                    .onCompleteResponse((ChatResponse response) -> {
+                        sink.complete();
+                    })
+                    .onError((Throwable error) -> {
+                        error.printStackTrace();
+                        sink.error(error);
+                    })
+                    .start();
+        });
+    }
+
+
+    /**
      * 生成多文件代码(流式)
      *
      * @param codeStream 代码流
      * @param codeGenType 代码生成模式
      * @return 流式响应
      */
-    private Flux<String> ProcessCodeStream(Flux<String> codeStream,CodeGenTypeEnum codeGenType,Long appId) {
+    private Flux<String> processCodeStream(Flux<String> codeStream,CodeGenTypeEnum codeGenType,Long appId) {
         //定义一个字符串拼接器
         StringBuilder codeBuilder=new StringBuilder();
         return codeStream.doOnNext(chunk -> {

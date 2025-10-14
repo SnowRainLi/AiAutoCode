@@ -2,6 +2,7 @@ package org.czjtu.aiautocode.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.service.IService;
+import org.czjtu.aiautocode.model.dto.app.AppAddRequest;
 import org.czjtu.aiautocode.model.dto.app.AppQueryRequest;
 import org.czjtu.aiautocode.model.entity.App;
 import org.czjtu.aiautocode.model.entity.User;
@@ -16,6 +17,8 @@ import java.util.List;
 * @createDate 2025-10-07 16:52:13
 */
 public interface AppService extends IService<App> {
+
+    Long createApp(AppAddRequest appAddRequest, User loginUser);
 
     /**
      * 获取封装类
@@ -55,4 +58,5 @@ public interface AppService extends IService<App> {
      */
     String deployApp(Long appId, User longinUser);
 
+    void generateAppScreenshotAsync(Long appId, String appUrl);
 }

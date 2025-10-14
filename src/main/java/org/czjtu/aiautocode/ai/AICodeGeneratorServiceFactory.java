@@ -10,7 +10,7 @@ import dev.langchain4j.model.chat.StreamingChatModel;
 import dev.langchain4j.service.AiServices;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.czjtu.aiautocode.ai.tools.FileWriteTool;
+import org.czjtu.aiautocode.ai.tools.*;
 import org.czjtu.aiautocode.exception.BusinessException;
 import org.czjtu.aiautocode.exception.ErrorCode;
 import org.czjtu.aiautocode.model.enums.CodeGenTypeEnum;
@@ -37,6 +37,9 @@ public class AICodeGeneratorServiceFactory {
 
     @Resource
     private StreamingChatModel reasoningStreamingChatModel;
+
+    @Resource
+    private ToolManager toolManager;
 
     /**
      * AI服务实例缓存
@@ -93,7 +96,9 @@ public class AICodeGeneratorServiceFactory {
             case VUE_PROJECT -> AiServices.builder(AICodeGeneratorService.class)
                     .streamingChatModel(reasoningStreamingChatModel)
                     .chatMemoryProvider(memoryId -> chatMemory)
-                    .tools(new FileWriteTool())
+                    .tools(
+                            toolManager.getAllTools()
+                    )
                     .hallucinatedToolNameStrategy(toolExecutionRequest -> ToolExecutionResultMessage.from(
                             toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                     ))

@@ -2,6 +2,7 @@ package org.czjtu.aiautocode.ai;
 
 import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.TokenStream;
 import dev.langchain4j.service.UserMessage;
 import org.czjtu.aiautocode.ai.model.HtmlCodeResult;
 import org.czjtu.aiautocode.ai.model.MultiFileCodeResult;
@@ -47,5 +48,5 @@ public interface AICodeGeneratorService {
      * @return AI回复
      */
     @SystemMessage(fromResource = "prompt/code-vue-progect-prompt")
-    Flux<String> generateVueCodeStream(@MemoryId long appId,@UserMessage String userMessage);
+    TokenStream generateVueCodeStream(@MemoryId long appId, @UserMessage String userMessage);
 }
