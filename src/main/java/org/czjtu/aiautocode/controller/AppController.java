@@ -20,9 +20,12 @@ import org.czjtu.aiautocode.model.dto.app.*;
 import org.czjtu.aiautocode.model.entity.App;
 import org.czjtu.aiautocode.model.entity.User;
 import org.czjtu.aiautocode.model.vo.AppVO;
+import org.czjtu.aiautocode.ratelimter.annotation.RateLimit;
+import org.czjtu.aiautocode.ratelimter.enums.RateLimitType;
 import org.czjtu.aiautocode.service.AppService;
 import org.czjtu.aiautocode.service.ProjectDownloadService;
 import org.czjtu.aiautocode.service.UserService;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
@@ -167,6 +170,10 @@ public class AppController {
      * @param appQueryRequest 查询请求
      * @return 精选应用列表
      */
+    @Cacheable(value = "good_app_page",
+            key = "T(org.czjtu.aiautocode.utils.CacheKeyUtils).generateKey(#appQueryRequest)",
+            condition = "#appQueryRequest.pageNum<=10"
+    )
     @PostMapping("/good/list/page/vo")
     public BaseResponse<Page<AppVO>> listGoodAppVOByPage(@RequestBody AppQueryRequest appQueryRequest) {
         ThrowUtils.throwIf(appQueryRequest == null, ErrorCode.PARAMS_ERROR);
@@ -270,6 +277,7 @@ public class AppController {
 
 
     @GetMapping(value = "/chat/gen/code",produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER,rate = 5 ,rateInterval = 60,message = "AI对话请求过于频繁，请稍后在试")
     public Flux<ServerSentEvent<String>> chatToGenCode(@RequestParam("appId") Long appId,
                                       @RequestParam("prompt") String message,
                                       HttpServletRequest  request) {

@@ -138,8 +138,8 @@ public class ChatHistoryServiceImpl extends ServiceImpl<ChatHistoryMapper, ChatH
     public int lodeChatHistoryToMemory(Long appId, MessageWindowChatMemory chatMemory, int maxCount) {
         try {
             QueryWrapper<ChatHistory> queryWrapper = new QueryWrapper<>();
-            queryWrapper.eq("app_id", appId)
-                    .orderByDesc("create_time")
+            queryWrapper.eq("appId", appId)
+                    .orderByDesc("createTime")
                     .last("LIMIT " + maxCount);
 
             List<ChatHistory> historyList = this.list(queryWrapper);

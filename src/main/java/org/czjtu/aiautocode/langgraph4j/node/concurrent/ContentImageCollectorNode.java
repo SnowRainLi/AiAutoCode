@@ -4,11 +4,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.bsc.langgraph4j.action.AsyncNodeAction;
 import org.bsc.langgraph4j.prebuilt.MessagesState;
 import org.czjtu.aiautocode.langgraph4j.model.ImageCollectionPlan;
+import org.czjtu.aiautocode.langgraph4j.model.ImageResource;
 import org.czjtu.aiautocode.langgraph4j.state.WorkflowContext;
 import org.czjtu.aiautocode.langgraph4j.tools.ImageSearchTool;
 import org.czjtu.aiautocode.utils.SpringContextUtil;
 
 import java.util.ArrayList;
+import java.util.List;
+
+import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
 
 @Slf4j
 public class ContentImageCollectorNode {

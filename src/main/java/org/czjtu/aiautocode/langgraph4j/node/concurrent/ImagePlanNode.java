@@ -8,6 +8,8 @@ import org.czjtu.aiautocode.langgraph4j.model.ImageCollectionPlan;
 import org.czjtu.aiautocode.langgraph4j.state.WorkflowContext;
 import org.czjtu.aiautocode.utils.SpringContextUtil;
 
+import static org.bsc.langgraph4j.action.AsyncNodeAction.node_async;
+
 @Slf4j
 public class ImagePlanNode {
 
