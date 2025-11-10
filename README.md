@@ -1,3 +1,5 @@
+演示地址:http://47.111.228.155:81/
+
 # AIAutoCode 后端（Spring Boot）说明
 
 本目录为后端源码根目录（Java / Spring Boot）。提供应用管理、用户管理、对话历史与静态资源服务等能力，配合前端 `yu-ai-code-mother-frontend` 使用。
